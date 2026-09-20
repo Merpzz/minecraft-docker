@@ -21,6 +21,8 @@ RUN chmod +x /opt/mcctl/*.sh /opt/mcctl/mcctl.py \
 
 ENV DATA_DIR=/data \
     JAVA_ROOT=/opt/java \
+    PERSIST_DIR=/persist \
+    SERVER_PORT=25565 \
     EULA=false \
     MEMORY=2G \
     MC_VERSION=latest \
@@ -35,6 +37,6 @@ EXPOSE 25565
 
 # Long start period: first start downloads and installs the server.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10m --retries=3 \
-  CMD python3 -c "import socket; socket.create_connection(('127.0.0.1', 25565), 3)" || exit 1
+  CMD python3 -c "import os, socket; socket.create_connection(('127.0.0.1', int(os.environ['SERVER_PORT'])), 3)" || exit 1
 
 ENTRYPOINT ["tini", "--", "/opt/mcctl/entrypoint.sh"]

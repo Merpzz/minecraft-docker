@@ -7,9 +7,17 @@ En Minecraft-container där du väljer **Minecraft-version och modloader** med m
 ```bash
 cp .env.example .env
 nano .env                    # sätt EULA=true, MC_VERSION, LOADER, MEMORY
-docker compose up -d --build
+docker compose up -d
 docker compose logs -f       # första starten laddar ner och installerar servern
 ```
+
+Imagen byggs automatiskt av GitHub Actions vid varje push till `main` (och varje måndag för att få med säkerhetsuppdateringar i Java/Ubuntu) och hämtas från `ghcr.io/merpzz/minecraft-docker`. Du behöver alltså inte bygga på servern. Vill du ändå bygga lokalt:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+**Behörighet till imagen:** repot är privat, så imagen är det också. På servern: `echo <PAT> | docker login ghcr.io -u <användarnamn> --password-stdin`, där `<PAT>` är en GitHub-token (classic) med `read:packages`. Alternativt gör du paketet publikt: GitHub → Packages → `minecraft-docker` → Package settings → Change visibility. Då krävs ingen inloggning. Vill du låsa en version i stället för `latest`: sätt `IMAGE=ghcr.io/merpzz/minecraft-docker:sha-abc1234` i `.env`.
 
 Serverkonsolen: `docker attach minecraft` (lämna med **Ctrl-P Ctrl-Q**, inte Ctrl-C, annars stoppas servern).
 
@@ -39,6 +47,21 @@ Byter du `MC_VERSION`, `LOADER` eller `LOADER_VERSION` och kör `docker compose 
 ### Java
 Fyra Java-versioner ligger i imagen och rätt väljs automatiskt utifrån vad Minecraft-versionen kräver (enligt Mojangs versionsdata): Java 8 för ≤ 1.16.5, 17 för 1.17–1.20.4, 21 för 1.20.5–1.21.x, 25 för 26.x.
 
+## Serverport, operatörer och persistent lagring
+
+**Port:** `SERVER_PORT=25565` (standard). Sätts både som port containern lyssnar på (`server-port` i `server.properties` skrivs om vid varje start) och som publicerad port. Ändra alltså porten i `.env`, inte i `server.properties`.
+
+**Operatörer:** `OPS=Notch,jeb_` lägger spelarna i `ops.json` vid start, med nivå `OP_LEVEL` (1–4, standard 4). UUID slås upp hos Mojang. Två saker att veta:
+- Det är **additivt**: spelare som du gjort op med `/op` i spelet ligger kvar, och att ta bort ett namn ur `OPS` gör ingen `/deop`. Redan tillagda spelare ändras inte (ändrad `OP_LEVEL` gäller bara nya).
+- Om uppslaget misslyckas (fel namn, Mojang nere) varnar loggen och servern startar ändå. På server med `online-mode=false` beräknas UUID lokalt, utan uppslag.
+
+**Persistent lagring:** allt i `data/` överlever redan `docker compose down`, men en separat mapp är till för det som ska överleva även om du raderar `data/` eller installerar om från början.
+```bash
+PERSIST=world,ops.json,whitelist.json,banned-players.json,server.properties
+PERSIST_HOST_DIR=./persist          # valfri sökväg på värden, t.ex. /srv/minecraft-keep
+```
+Varje angiven sökväg (relativt serverfoldern) flyttas till `persist/` och ersätts av en symbollänk. Finns redan data där (t.ex. efter ominstallation) används den. Om både lokal och persistent kopia finns vinner den persistenta, och den lokala sparas som `<namn>.local-<tid>`, ingenting raderas. `world`, `ops.json`, `whitelist.json`, `banned-*.json` och `server.properties` skapas direkt på rätt plats; andra filer flyttas första gången de finns. Loggen varnar om `PERSIST` är satt men `/persist` inte är en monterad mapp (då försvinner datan med containern).
+
 ## Moddar och konfiguration
 
 ```
@@ -56,7 +79,6 @@ Vid start kontrollerar containern varje jar i `mods/` och **varnar i loggen** om
 ## Övrigt
 
 - **Minne:** `MEMORY=4G` (sätter -Xmx; `MEMORY_MIN` styr -Xms, annars samma). Extra JVM-flaggor: `JVM_OPTS`.
-- **Port:** `HOST_PORT` byter porten utåt. Ändra inte `server-port` i `server.properties` (containern lyssnar på 25565 internt).
 - **Rättigheter:** servern körs som `PUID:PGID` (standard 1000:1000), inte root. På Unraid: `PUID=99 PGID=100`.
 - **Stopp:** `stop_grace_period: 2m` ger servern tid att spara världen. Använd `docker compose stop`/`down`.
 
@@ -70,7 +92,7 @@ Vid start kontrollerar containern varje jar i `mods/` och **varnar i loggen** om
 ## Tester
 
 ```bash
-python3 -m unittest scripts/test_mcctl.py     # offline, nätverksanrop mockas
+python3 -m unittest discover -s scripts       # offline, nätverksanrop mockas (körs också i GitHub Actions)
 ```
 
-Verifierat live mot API:erna: versionsuppslag för Fabric, Forge och NeoForge (inkl. nya `26.x`-schemat och NeoForge-prefix), nedladdning och omväxling vanilla → Fabric, pinning av `latest`, moddvarningar. Verifierat med HTTP-anrop att installer-URL:erna svarar. **Ej verifierat:** Docker-bygget och att Forge/NeoForge-installerarna faktiskt körs, eftersom Docker och Java saknas i miljön där den här koden skrevs.
+Verifierat live mot API:erna (och Mojangs namnuppslag för `OPS`): versionsuppslag för Fabric, Forge och NeoForge (inkl. nya `26.x`-schemat och NeoForge-prefix), nedladdning och omväxling vanilla → Fabric, pinning av `latest`, moddvarningar. Verifierat med HTTP-anrop att installer-URL:erna svarar. **Ej verifierat:** Docker-bygget (GitHub Actions-flödet är ännu inte körd), och att Forge/NeoForge-installerarna faktiskt körs, eftersom Docker och Java saknas i miljön där den här koden skrevs.

@@ -7,10 +7,10 @@ if [ "$#" -gt 0 ]; then
     exec "$@"
 fi
 
-mkdir -p "$DATA_DIR" "$DATA_DIR/mods" "$DATA_DIR/config"
+mkdir -p "$DATA_DIR" "$DATA_DIR/mods" "$DATA_DIR/config" "${PERSIST_DIR:-/persist}"
 
 # chown only when needed - worlds can be large.
-for d in "$DATA_DIR" "$DATA_DIR/mods" "$DATA_DIR/config"; do
+for d in "$DATA_DIR" "$DATA_DIR/mods" "$DATA_DIR/config" "${PERSIST_DIR:-/persist}"; do
     if [ "$(stat -c %u:%g "$d")" != "$PUID:$PGID" ]; then
         echo "[entrypoint] Setting ownership of $d to $PUID:$PGID"
         chown -R "$PUID:$PGID" "$d"

@@ -7,3 +7,5 @@
 !/config/.gitkeep
 .env
 __pycache__/
+/persist/*
+!/persist/.gitkeep

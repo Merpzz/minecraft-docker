@@ -11,17 +11,21 @@ Usage:
   mcctl resolve <loader> <mc> [ver]   print the resolved "mc loader-version java"
   mcctl install                       install according to MC_VERSION/LOADER/LOADER_VERSION
   mcctl launch-cmd                    print the java command line for the installed server
+  mcctl prepare                       apply SERVER_PORT, OPS and PERSIST to the server folder
   mcctl check-mods                    warn about mods that do not match the loader
 """
 import glob
+import hashlib
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
+import uuid
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -454,6 +458,208 @@ def check_mods():
 
 
 # --------------------------------------------------------------------------- #
+# Server settings: port, operators, persistent paths
+# --------------------------------------------------------------------------- #
+PERSIST_DIR = os.environ.get("PERSIST_DIR", "/persist")
+MOJANG_PROFILE = "https://api.mojang.com/users/profiles/minecraft"
+
+# Files the vanilla server itself keeps as JSON lists; safe to pre-create as "[]".
+JSON_LISTS = ("ops.json", "whitelist.json", "banned-players.json", "banned-ips.json", "usercache.json")
+
+
+def props_path():
+    return os.path.join(DATA, "server.properties")
+
+
+def read_property(key, default=None):
+    try:
+        with open(props_path()) as f:
+            for line in f:
+                k, sep, v = line.rstrip("\n").partition("=")
+                if sep and k.strip() == key:
+                    return v.strip()
+    except FileNotFoundError:
+        pass
+    return default
+
+
+def set_property(key, value):
+    """Set key=value in server.properties, keeping every other line as is.
+    Writes in place (no rename) so a symlink into PERSIST_DIR stays intact."""
+    lines, found = [], False
+    try:
+        with open(props_path()) as f:
+            lines = f.read().splitlines()
+    except FileNotFoundError:
+        pass
+    for i, line in enumerate(lines):
+        if line.partition("=")[0].strip() == key and not line.lstrip().startswith("#"):
+            lines[i], found = f"{key}={value}", True
+    if not found:
+        lines.append(f"{key}={value}")
+    with open(props_path(), "w") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def apply_port():
+    raw = os.environ.get("SERVER_PORT", "25565").strip() or "25565"
+    if not raw.isdigit() or not 1 <= int(raw) <= 65535:
+        raise Fail(f"SERVER_PORT must be 1-65535 (got '{raw}')")
+    set_property("server-port", raw)
+    log(f"Server port: {raw}")
+
+
+def offline_uuid(name):
+    """UUID of a player on an online-mode=false server (same as Java's nameUUIDFromBytes)."""
+    h = bytearray(hashlib.md5(f"OfflinePlayer:{name}".encode()).digest())
+    h[6] = (h[6] & 0x0F) | 0x30
+    h[8] = (h[8] & 0x3F) | 0x80
+    return str(uuid.UUID(bytes=bytes(h)))
+
+
+def mojang_uuid(name):
+    """UUID and correctly-cased name from Mojang, or None if the player does not exist."""
+    try:
+        req = urllib.request.Request(f"{MOJANG_PROFILE}/{name}", headers={"User-Agent": "custom-minecraft-docker/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            body = r.read()
+        if not body:
+            return None
+        d = json.loads(body)
+        return str(uuid.UUID(hex=d["id"])), d["name"]
+    except urllib.error.HTTPError as e:
+        if e.code in (204, 404):
+            return None
+        raise Fail(f"Mojang lookup for '{name}' failed: HTTP {e.code}")
+    except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as e:
+        raise Fail(f"Mojang lookup for '{name}' failed: {e}")
+
+
+def apply_ops():
+    """Make sure every player in OPS is in ops.json. Only adds: ops given in-game
+    stay, and removing a name from OPS does not de-op it (use /deop)."""
+    names = [n for n in re.split(r"[,\s]+", os.environ.get("OPS", "").strip()) if n]
+    if not names:
+        return
+    level = os.environ.get("OP_LEVEL", "4").strip() or "4"
+    if level not in ("1", "2", "3", "4"):
+        raise Fail(f"OP_LEVEL must be 1-4 (got '{level}')")
+    path = os.path.join(DATA, "ops.json")
+    ops = []
+    try:
+        with open(path) as f:
+            ops = json.load(f)
+        if not isinstance(ops, list):
+            raise ValueError("not a list")
+    except FileNotFoundError:
+        pass
+    except ValueError as e:
+        backup = f"{path}.broken-{int(time.time())}"
+        shutil.copy(path, backup)
+        log(f"WARNING: ops.json was unreadable ({e}); saved a copy as {os.path.basename(backup)}")
+        ops = []
+    online = read_property("online-mode", "true").lower() != "false"
+    by_name = {o.get("name", "").lower(): o for o in ops}
+    changed = False
+    for name in names:
+        if not re.fullmatch(r"[A-Za-z0-9_]{1,16}", name):
+            log(f"WARNING: '{name}' is not a valid Minecraft username - skipped")
+            continue
+        entry = by_name.get(name.lower())
+        if not online:
+            uid = offline_uuid(name)
+            if entry and entry.get("uuid") == uid:
+                continue
+        elif entry:
+            continue              # already op; no lookup needed (works offline too)
+        else:
+            try:
+                found = mojang_uuid(name)
+            except Fail as e:
+                log(f"WARNING: {e} - '{name}' not added")
+                continue
+            if not found:
+                log(f"WARNING: no Minecraft player named '{name}' - skipped")
+                continue
+            uid, name = found
+        if entry:
+            entry["uuid"] = uid
+        else:
+            ops.append({"uuid": uid, "name": name, "level": int(level), "bypassesPlayerLimit": False})
+            log(f"Added operator {name} (level {level})")
+        changed = True
+    if changed:
+        with open(path, "w") as f:
+            json.dump(ops, f, indent=2)
+
+
+def persist_entries():
+    out = []
+    for e in re.split(r"[,\s]+", os.environ.get("PERSIST", "").strip()):
+        if not e:
+            continue
+        norm = os.path.normpath(e.strip("/")) if not e.startswith("/") else None
+        if norm is None or norm == "." or norm.startswith(".."):
+            raise Fail(f"PERSIST entries must be paths inside the server folder (got '{e}')")
+        out.append(norm)
+    return out
+
+
+def persist_one(rel):
+    """Make DATA/rel a symlink to PERSIST_DIR/rel, moving existing data over."""
+    src, dst = os.path.join(DATA, rel), os.path.join(PERSIST_DIR, rel)
+    if os.path.islink(src) and os.path.realpath(src) == os.path.realpath(dst):
+        return
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    local = os.path.lexists(src) and not os.path.islink(src)
+    if os.path.lexists(dst):
+        if local:      # both exist: the persistent copy wins, the local one is kept aside
+            keep = f"{src}.local-{int(time.time())}"
+            os.rename(src, keep)
+            log(f"WARNING: {rel} existed both locally and in persist; using the persist copy, "
+                f"local one kept as {os.path.basename(keep)}")
+        elif os.path.islink(src):
+            os.remove(src)
+    else:
+        if local:
+            shutil.move(src, dst)
+        else:
+            if os.path.islink(src):
+                os.remove(src)
+            base = os.path.basename(rel)
+            if base in JSON_LISTS:
+                with open(dst, "w") as f:
+                    f.write("[]\n")
+            elif base.endswith((".properties", ".txt")):
+                open(dst, "w").close()
+            elif "." not in base:
+                os.makedirs(dst)
+            else:
+                log(f"{rel} does not exist yet; it will be moved to persist on a later start")
+                return
+    os.symlink(dst, src)
+    log(f"Persistent: {rel} -> {dst}")
+
+
+def apply_persist():
+    entries = persist_entries()
+    if not entries:
+        return
+    if not os.path.ismount(PERSIST_DIR):
+        log(f"WARNING: {PERSIST_DIR} is not a mounted volume - PERSIST data lives inside the "
+            "container and is lost when it is removed. Mount a host folder there (see docker-compose.yml).")
+    for rel in entries:
+        persist_one(rel)
+
+
+def prepare():
+    apply_persist()   # first, so server.properties/ops.json edits go to the persistent copies
+    apply_port()
+    apply_ops()
+
+
+# --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
 def main(argv):
@@ -490,6 +696,8 @@ def main(argv):
         install()
     elif c == "launch-cmd":
         cmd_launch()
+    elif c == "prepare":
+        prepare()
     elif c == "check-mods":
         check_mods()
     else:

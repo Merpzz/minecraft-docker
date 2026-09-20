@@ -12,6 +12,7 @@ case "${EULA:-false}" in
 esac
 
 mcctl install
+mcctl prepare      # SERVER_PORT, OPS, PERSIST
 mcctl check-mods
 
 # launch-cmd prints: java binary, then one argument per line.

@@ -1,19 +1,25 @@
+# Uses the prebuilt image from GitHub (built automatically on every push to main).
+# To build locally instead:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 services:
   minecraft:
-    build: .
-    image: custom-minecraft:latest
+    image: ${IMAGE:-ghcr.io/merpzz/minecraft-docker:latest}
     container_name: minecraft
     restart: unless-stopped
     stdin_open: true          # lets you use the server console: docker attach minecraft
     tty: true
     stop_grace_period: 2m     # time to save the world on shutdown
     ports:
-      - "${HOST_PORT:-25565}:25565"
+      - "${SERVER_PORT:-25565}:${SERVER_PORT:-25565}"
     environment:
       EULA: "${EULA:-false}"
       MC_VERSION: "${MC_VERSION:-latest}"
       LOADER: "${LOADER:-vanilla}"            # vanilla | fabric | forge | neoforge
       LOADER_VERSION: "${LOADER_VERSION:-}"   # empty = recommended/latest stable
+      SERVER_PORT: "${SERVER_PORT:-25565}"
+      OPS: "${OPS:-}"                         # operators, comma separated
+      OP_LEVEL: "${OP_LEVEL:-4}"
+      PERSIST: "${PERSIST:-}"                 # paths kept in ./persist (or PERSIST_HOST_DIR)
       MEMORY: "${MEMORY:-4G}"
       MEMORY_MIN: "${MEMORY_MIN:-}"
       JVM_OPTS: "${JVM_OPTS:-}"
@@ -24,3 +30,4 @@ services:
       - ./data:/data          # world, server.properties, logs, installed server files
       - ./mods:/data/mods     # drop mod .jar files here
       - ./config:/data/config # mod configs
+      - ${PERSIST_HOST_DIR:-./persist}:/persist   # survives reinstall, see PERSIST in .env
