@@ -39,6 +39,8 @@ docker compose run --rm minecraft mcctl loader forge 1.20.1       # Forge-versio
 docker compose run --rm minecraft mcctl resolve fabric 1.21.1     # vad som skulle installeras
 ```
 
+**Vilka kombinationer finns?** Se [`VERSIONS.md`](VERSIONS.md): en tabell per Minecraft-version med vilken Fabric-, Forge- och NeoForge-version du får när `LOADER_VERSION` är tomt (`-` = loadern saknar den MC-versionen). Tabellen och rullgardinen i Unraid-mallen genereras av `tools/gen_template.py` och uppdateras varje måndag av GitHub Actions (`update-versions.yml`), så nya Minecraft-versioner dyker upp av sig själva. Tomt `LOADER_VERSION` väljer alltid rätt loader-version för den MC-version du valt; ogiltiga kombinationer stoppas med ett felmeddelande som listar vad som finns.
+
 Byter du `MC_VERSION`, `LOADER` eller `LOADER_VERSION` och kör `docker compose up -d` igen ersätts serverfilerna. **Värld, `mods/`, `config/` och `server.properties` rörs inte.**
 
 ### `latest` pinnas
@@ -49,7 +51,7 @@ Fyra Java-versioner ligger i imagen och rätt väljs automatiskt utifrån vad Mi
 
 ## Unraid
 
-Färdig mall: `unraid-template/minecraft-docker.xml` (förifyllda fält för version, loader, minne, operatörer, port, persistent lagring och sökvägar under `/mnt/user/appdata/minecraft/`, kör som 99:100).
+Färdig mall: `unraid-template/minecraft-docker.xml` (rullgardin för Minecraft-version, förifyllda fält för version, loader, minne, operatörer, port, persistent lagring och sökvägar under `/mnt/user/appdata/minecraft/`, kör som 99:100).
 
 - **Importera:** kopiera XML-filen till `/boot/config/plugins/dockerMan/templates-user/` på Unraid, eller lägg in mallens URL under Docker → Add Container → Template. Mallen väljs sedan i rullgardinen.
 - **Port:** i Unraid är portmappningen och `SERVER_PORT` två fält. Värdsidan av mappningen kan vara vad som helst, men **containerporten i mappningen måste vara samma som `SERVER_PORT`**. Standard är 25565 för båda.

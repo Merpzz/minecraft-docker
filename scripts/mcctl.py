@@ -114,7 +114,9 @@ def mc_meta(mc):
 # Fabric
 # --------------------------------------------------------------------------- #
 def fabric_loader_versions(mc):
-    """[(version, stable)] newest first."""
+    """[(version, stable)] newest first; [] if Fabric does not support this Minecraft version."""
+    if mc not in {e["version"] for e in get_json(f"{FABRIC_META}/game")}:
+        return []
     data = get_json(f"{FABRIC_META}/loader/{mc}")
     return [(e["loader"]["version"], e["loader"]["stable"]) for e in data]
 
@@ -248,7 +250,13 @@ def resolve_loader_version(loader, mc, want):
         return ""
     vs = loader_versions(loader, mc)
     if not vs:
-        raise Fail(f"{loader} has no builds for Minecraft {mc}. Run: mcctl loaders {loader}")
+        try:
+            near = {"fabric": fabric_mc_versions, "forge": forge_mc_versions,
+                    "neoforge": neo_mc_versions}[loader]()[:8]
+            hint = f" Newest supported: {', '.join(near)}. Full list: mcctl loaders {loader}"
+        except Fail:
+            hint = f" Run: mcctl loaders {loader}"
+        raise Fail(f"{loader} has no builds for Minecraft {mc}.{hint}")
     names = [v for v, _ in vs]
     want = (want or "").strip()
     if want in ("", "latest", "recommended"):
@@ -267,8 +275,8 @@ def resolve_loader_version(loader, mc, want):
         log(f"No stable {loader} build for {mc}; using newest pre-release {names[0]}")
         return names[0]
     if want not in names:
-        raise Fail(f"{loader} {want} does not exist for Minecraft {mc}. "
-                   f"Run: mcctl loader {loader} {mc}")
+        raise Fail(f"{loader} {want} does not exist for Minecraft {mc}. Newest available: "
+                   f"{', '.join(names[:8])}. Full list: mcctl loader {loader} {mc}")
     return want
 
 

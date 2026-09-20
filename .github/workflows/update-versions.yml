@@ -1,0 +1,30 @@
+name: Update version lists
+
+# Refreshes the Minecraft version dropdown in the Unraid template and VERSIONS.md
+# from the live Mojang / Fabric / Forge / NeoForge APIs.
+on:
+  schedule:
+    - cron: "0 5 * * 1"    # weekly
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/gen_template.py
+      - name: Commit if changed
+        run: |
+          # The date line changes every run; only commit when the real content changed.
+          if git diff --quiet -I'^Generated ' -- unraid-template VERSIONS.md; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add unraid-template VERSIONS.md
+          git commit -m "Update version lists"
+          git push
