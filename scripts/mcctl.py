@@ -299,7 +299,12 @@ def resolve_all():
         raise Fail(f"LOADER must be one of {', '.join(LOADERS)} (got '{loader}')")
     mc = resolve_mc(os.environ.get("MC_VERSION", "latest").strip())
     lv = resolve_loader_version(loader, mc, os.environ.get("LOADER_VERSION", ""))
-    java = int(os.environ["JAVA_VERSION"]) if os.environ.get("JAVA_VERSION") else \
+    # Optional manual override. Not called JAVA_VERSION: the Temurin base image sets that
+    # itself (e.g. "jdk-21.0.12+8"), which must never be read as our setting.
+    override = os.environ.get("MC_JAVA_MAJOR", "").strip()
+    if override and not override.isdigit():
+        raise Fail(f"MC_JAVA_MAJOR must be a number like 17 or 21 (got '{override}')")
+    java = int(override) if override else \
         pick_java(mc_meta(mc).get("javaVersion", {}).get("majorVersion", 8))
     return loader, mc, lv, java
 

@@ -130,6 +130,32 @@ class Install(unittest.TestCase):
                 mcctl.pick_java(26)
 
 
+class JavaSelection(unittest.TestCase):
+    def setUp(self):
+        self.d = tempfile.TemporaryDirectory()
+        self.addCleanup(self.d.cleanup)
+        for j in ("8", "17", "21", "25"):
+            os.makedirs(os.path.join(self.d.name, j))
+        p = mock.patch.object(mcctl, "JAVA_ROOT", self.d.name); p.start(); self.addCleanup(p.stop)
+        p = mock.patch.object(mcctl, "mc_meta", return_value={"javaVersion": {"majorVersion": 21}}); p.start(); self.addCleanup(p.stop)
+        p = mock.patch.object(mcctl, "resolve_mc", side_effect=lambda v: v); p.start(); self.addCleanup(p.stop)
+
+    def env(self, **kw):
+        base = {"LOADER": "vanilla", "MC_VERSION": "1.21.1"}
+        return mock.patch.dict(os.environ, {**base, **kw})
+
+    def test_temurin_java_version_env_is_ignored(self):
+        # The eclipse-temurin base image sets JAVA_VERSION=jdk-21.0.12+8 in every container.
+        with self.env(JAVA_VERSION="jdk-21.0.12+8"):
+            self.assertEqual(mcctl.resolve_all()[3], 21)
+
+    def test_manual_override(self):
+        with self.env(MC_JAVA_MAJOR="25"):
+            self.assertEqual(mcctl.resolve_all()[3], 25)
+        with self.env(MC_JAVA_MAJOR="jdk-21"), self.assertRaises(mcctl.Fail):
+            mcctl.resolve_all()
+
+
 class Settings(unittest.TestCase):
     def setUp(self):
         self.d = tempfile.TemporaryDirectory()
