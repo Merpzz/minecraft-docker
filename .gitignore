@@ -1,0 +1,9 @@
+# Server data, worlds and mods are local - never commit them
+/data/*
+/mods/*
+/config/*
+!/data/.gitkeep
+!/mods/.gitkeep
+!/config/.gitkeep
+.env
+__pycache__/
