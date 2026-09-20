@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths-ignore: ["**.md", "unraid-template/**"]
   pull_request:            # build + test only, nothing is pushed
   workflow_dispatch:
   schedule:

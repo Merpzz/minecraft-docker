@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>minecraft-docker</Name>
+  <Repository>ghcr.io/merpzz/minecraft-docker:latest</Repository>
+  <Registry>https://github.com/Merpzz/minecraft-docker/pkgs/container/minecraft-docker</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Merpzz/minecraft-docker/issues</Support>
+  <Project>https://github.com/Merpzz/minecraft-docker</Project>
+  <Overview>
+Minecraft server where you pick the Minecraft version and the modloader (vanilla, Fabric, Forge or NeoForge) with variables. The server is downloaded and installed on first start. Drop mod .jar files in the Mods folder.
+  </Overview>
+  <Category>GameServers:</Category>
+  <TemplateURL>https://raw.githubusercontent.com/Merpzz/minecraft-docker/main/unraid-template/minecraft-docker.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Merpzz/minecraft-docker/main/unraid-template/icon.png</Icon>
+  <ExtraParams>--stop-timeout 120 --interactive --tty</ExtraParams>
+  <Date></Date>
+  <Description>
+Custom Minecraft server container. Java 8/17/21/25 are included and the right one is chosen automatically from the Minecraft version.
+
+IMPORTANT - SERVER PORT: the "Server Port" port mapping and the SERVER_PORT variable must match. The host side of the port mapping can be anything, but if you change SERVER_PORT you must change the container port in the port mapping to the same number (and the other way around).
+
+Setup:
+- Set EULA to true to accept https://aka.ms/MinecraftEULA
+- Choose MC_VERSION and LOADER. Valid versions can be listed from the container console, e.g. "mcctl loader neoforge 1.21.1", "mcctl loaders forge", "mcctl mc".
+- Leave LOADER_VERSION empty for the recommended/newest stable loader version.
+- OPS: comma separated usernames that become operators. It only adds; use /deop in-game to remove.
+- PERSIST: comma separated paths (e.g. world,ops.json,server.properties) that are kept in the Persistent folder and survive reinstalls.
+- "latest" is resolved once and then kept. Set UPDATE=true for one start to upgrade. Back up the world before upgrading Minecraft versions.
+- Console: open the container console (Unraid: container icon, Console) or run "docker attach minecraft-docker" and detach with Ctrl-P Ctrl-Q.
+  </Description>
+  <Requires></Requires>
+  <Config Name="Server Port" Target="25565" Default="25565" Mode="tcp" Description="Port players connect to. Container port must equal the SERVER_PORT variable below." Type="Port" Display="always" Required="true" Mask="false">25565</Config>
+  <Config Name="Server Data" Target="/data" Default="/mnt/user/appdata/minecraft/data" Mode="rw" Description="World, server.properties, logs and installed server files." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/minecraft/data</Config>
+  <Config Name="Mods" Target="/data/mods" Default="/mnt/user/appdata/minecraft/mods" Mode="rw" Description="Drop mod .jar files here, then restart the container." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/minecraft/mods</Config>
+  <Config Name="Mod Config" Target="/data/config" Default="/mnt/user/appdata/minecraft/config" Mode="rw" Description="Configuration files for mods." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/minecraft/config</Config>
+  <Config Name="Persistent" Target="/persist" Default="/mnt/user/appdata/minecraft/persist" Mode="rw" Description="Holds the paths listed in PERSIST. Survives reinstalls and deleting the Server Data folder." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/minecraft/persist</Config>
+  <Config Name="EULA" Target="EULA" Default="false|true" Mode="" Description="Set to true to accept the Minecraft EULA (https://aka.ms/MinecraftEULA)." Type="Variable" Display="always" Required="true" Mask="false">false</Config>
+  <Config Name="MC_VERSION" Target="MC_VERSION" Default="1.21.1" Mode="" Description="Exact Minecraft version (e.g. 1.21.1 or 26.2), latest or latest-snapshot." Type="Variable" Display="always" Required="true" Mask="false">1.21.1</Config>
+  <Config Name="LOADER" Target="LOADER" Default="neoforge|fabric|forge|vanilla" Mode="" Description="Server type / modloader." Type="Variable" Display="always" Required="true" Mask="false">neoforge</Config>
+  <Config Name="LOADER_VERSION" Target="LOADER_VERSION" Default="" Mode="" Description="Empty = recommended (Forge) or newest stable (others). Or latest, or an exact version such as 21.1.172." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="SERVER_PORT" Target="SERVER_PORT" Default="25565" Mode="" Description="Port the server listens on inside the container. Must equal the container port of the Server Port mapping above." Type="Variable" Display="always" Required="true" Mask="false">25565</Config>
+  <Config Name="MEMORY" Target="MEMORY" Default="4G" Mode="" Description="Maximum Java heap (-Xmx), e.g. 4G or 6G." Type="Variable" Display="always" Required="true" Mask="false">4G</Config>
+  <Config Name="OPS" Target="OPS" Default="" Mode="" Description="Operators, comma separated Minecraft usernames (e.g. Notch,jeb_). Only adds; remove with /deop in-game." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="PERSIST" Target="PERSIST" Default="" Mode="" Description="Comma separated paths kept in the Persistent folder, e.g. world,ops.json,whitelist.json,banned-players.json,server.properties" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="OP_LEVEL" Target="OP_LEVEL" Default="4|3|2|1" Mode="" Description="Operator permission level (1-4) for newly added operators." Type="Variable" Display="advanced" Required="false" Mask="false">4</Config>
+  <Config Name="MEMORY_MIN" Target="MEMORY_MIN" Default="" Mode="" Description="Initial Java heap (-Xms). Empty = same as MEMORY." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="JVM_OPTS" Target="JVM_OPTS" Default="" Mode="" Description="Extra JVM flags." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="UPDATE" Target="UPDATE" Default="false|true" Mode="" Description="Set to true for one start to re-resolve latest / empty LOADER_VERSION, then set back to false. Back up the world first." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID the server runs as (Unraid: 99 = nobody)." Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID the server runs as (Unraid: 100 = users)." Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
+</Container>

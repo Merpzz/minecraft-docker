@@ -47,6 +47,15 @@ Byter du `MC_VERSION`, `LOADER` eller `LOADER_VERSION` och kör `docker compose 
 ### Java
 Fyra Java-versioner ligger i imagen och rätt väljs automatiskt utifrån vad Minecraft-versionen kräver (enligt Mojangs versionsdata): Java 8 för ≤ 1.16.5, 17 för 1.17–1.20.4, 21 för 1.20.5–1.21.x, 25 för 26.x.
 
+## Unraid
+
+Färdig mall: `unraid-template/minecraft-docker.xml` (förifyllda fält för version, loader, minne, operatörer, port, persistent lagring och sökvägar under `/mnt/user/appdata/minecraft/`, kör som 99:100).
+
+- **Importera:** kopiera XML-filen till `/boot/config/plugins/dockerMan/templates-user/` på Unraid, eller lägg in mallens URL under Docker → Add Container → Template. Mallen väljs sedan i rullgardinen.
+- **Port:** i Unraid är portmappningen och `SERVER_PORT` två fält. Värdsidan av mappningen kan vara vad som helst, men **containerporten i mappningen måste vara samma som `SERVER_PORT`**. Standard är 25565 för båda.
+- `TemplateURL` och ikonen pekar på `raw.githubusercontent.com` och fungerar bara när repot är publikt. Importera annars filen manuellt enligt ovan (ikonen då utan bild).
+- Mallen använder `--stop-timeout 120 --interactive --tty` (tid att spara världen, konsol via `docker attach`). Ej testad på en riktig Unraid.
+
 ## Serverport, operatörer och persistent lagring
 
 **Port:** `SERVER_PORT=25565` (standard). Sätts både som port containern lyssnar på (`server-port` i `server.properties` skrivs om vid varje start) och som publicerad port. Ändra alltså porten i `.env`, inte i `server.properties`.
