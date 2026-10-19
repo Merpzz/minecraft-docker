@@ -1,31 +1,31 @@
 # Available versions
 
-Generated 2026-10-12 from Mojang, Fabric, Forge and NeoForge by `tools/gen_template.py`; updated weekly by GitHub Actions.
+Generated 2026-10-19 from Mojang, Fabric, Forge and NeoForge by `tools/gen_template.py`; updated weekly by GitHub Actions.
 
 The loader version shown is what you get when `LOADER_VERSION` is empty. `-` means that loader has no build for that Minecraft version. Exact versions: `mcctl loader <loader> <mc-version>`.
 
 | Minecraft | Fabric | Forge | NeoForge |
 |---|---|---|---|
-| 26.3 | 0.19.5 | 66.0.10 (latest) | 26.3.0.76 |
-| 26.2 | 0.19.5 | 65.1.0 (recommended) | 26.2.0.90 |
-| 26.1.2 | 0.19.5 | 64.1.0 (recommended) | 26.1.2.116 |
+| 26.3 | 0.19.5 | 66.0.13 (latest) | 26.3.0.93 |
+| 26.2 | 0.19.5 | 65.1.0 (recommended) | 26.2.0.93 |
+| 26.1.2 | 0.19.5 | 64.1.0 (recommended) | 26.1.2.122 |
 | 26.1.1 | 0.19.5 | 63.0.2 (latest) | 26.1.1.15-beta (beta) |
 | 26.1 | 0.19.5 | 62.0.9 (latest) | 26.1.0.19-beta (beta) |
-| 1.21.11 | 0.19.5 | 61.2.0 (recommended) | 21.11.45 |
+| 1.21.11 | 0.19.5 | 61.2.0 (recommended) | 21.11.48 |
 | 1.21.10 | 0.19.5 | 60.1.0 (recommended) | 21.10.64 |
 | 1.21.9 | 0.19.5 | 59.0.5 (latest) | 21.9.16-beta (beta) |
-| 1.21.8 | 0.19.5 | 58.1.0 (recommended) | 21.8.54 |
+| 1.21.8 | 0.19.5 | 58.1.0 (recommended) | 21.8.57 |
 | 1.21.7 | 0.19.5 | 57.0.3 (latest) | 21.7.25-beta (beta) |
 | 1.21.6 | 0.19.5 | 56.0.9 (latest) | 21.6.20-beta (beta) |
-| 1.21.5 | 0.19.5 | 55.1.0 (recommended) | 21.5.98 |
-| 1.21.4 | 0.19.5 | 54.1.14 (recommended) | 21.4.158 |
-| 1.21.3 | 0.19.5 | 53.1.0 (recommended) | 21.3.97 |
+| 1.21.5 | 0.19.5 | 55.1.0 (recommended) | 21.5.101 |
+| 1.21.4 | 0.19.5 | 54.1.14 (recommended) | 21.4.161 |
+| 1.21.3 | 0.19.5 | 53.1.0 (recommended) | 21.3.100 |
 | 1.21.2 | 0.19.5 | - | 21.2.1-beta (beta) |
-| 1.21.1 | 0.19.5 | 52.1.0 (recommended) | 21.1.259 |
+| 1.21.1 | 0.19.5 | 52.1.0 (recommended) | 21.1.264 |
 | 1.21 | 0.19.5 | 51.0.33 (latest) | 21.0.167 |
-| 1.20.6 | 0.19.5 | 50.2.0 (recommended) | 20.6.141 |
+| 1.20.6 | 0.19.5 | 50.2.0 (recommended) | 20.6.144 |
 | 1.20.5 | 0.19.5 | - | 20.5.21-beta (beta) |
-| 1.20.4 | 0.19.5 | 49.2.0 (recommended) | 20.4.251 |
+| 1.20.4 | 0.19.5 | 49.2.0 (recommended) | 20.4.253 |
 | 1.20.3 | 0.19.5 | 49.0.2 (latest) | 20.3.8-beta (beta) |
 | 1.20.2 | 0.19.5 | 48.1.0 (recommended) | 20.2.93 |
 | 1.20.1 | 0.19.5 | 47.4.10 (recommended) | - |
